@@ -21,5 +21,5 @@ pip install -r requirements.txt
 ```
 4. **Execute a aplicação**
 ```bash
-python *um dos 3 arquivos, segmentação por cor, modelo ou hibrido
+python *um dos arquivos da main, segmentação por cor, modelo ou hibrido
 ```
