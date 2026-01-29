@@ -5,7 +5,7 @@ Comparativos de performance: segmentação por cor/forma (abordagem heurística)
 1. **Clone o repositório**
 ```bash
 git clone https://github.com/Focalorsz/Reconhecimento-de-Mangueiras-e-Elementos-de-Campo.git
-cd python
+cd main
 ```
 2. **Crie um ambiente virtual (recomendado)**
 ```bash
