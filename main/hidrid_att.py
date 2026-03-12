@@ -93,10 +93,11 @@ class RaspberryPiOptimizedDetector:
             hsv (numpy.ndarray): Frame convertido para espaço de cores HSV
             
         Returns:
-            tuple: (mask, bbox, center) onde:
+            tuple: (mask, bbox, center, oriented_bbox) onde:
                 - mask: Máscara binária da detecção
-                - bbox: Bounding box (x, y, w, h)
+                - bbox: Bounding box axis-aligned (x, y, w, h)
                 - center: Centro (cx, cy) ou None se não detectado
+                - oriented_bbox: 4 pontos do retângulo orientado ou None
         """
         mask1 = cv2.inRange(hsv, self.lower_red1, self.upper_red1)
         mask2 = cv2.inRange(hsv, self.lower_red2, self.upper_red2)
@@ -108,12 +109,12 @@ class RaspberryPiOptimizedDetector:
         contours, _ = cv2.findContours(mask_red, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
-            return None, None, None
+            return None, None, None, None
         
         largest_contour = max(contours, key=cv2.contourArea)
         
         if cv2.contourArea(largest_contour) < 500:
-            return None, None, None
+            return None, None, None, None
         
         x, y, w, h = cv2.boundingRect(largest_contour)
         bbox = (x, y, w, h)
@@ -125,8 +126,12 @@ class RaspberryPiOptimizedDetector:
             center = (cx, cy)
         else:
             center = (x + w//2, y + h//2)
+
+        rect = cv2.minAreaRect(largest_contour)
+        oriented_bbox = cv2.boxPoints(rect)
+        oriented_bbox = np.intp(oriented_bbox)
         
-        return mask_red, bbox, center
+        return mask_red, bbox, center, oriented_bbox
     
     def _get_roi_from_masks(self, frame, mask_red, ball_detections):
         """
@@ -273,7 +278,7 @@ class RaspberryPiOptimizedDetector:
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         ball_detections = self._detect_ball_blob(hsv)
-        mask_red, hose_bbox, hose_center = self._detect_hose_hsv(hsv)
+        mask_red, hose_bbox, hose_center, hose_obb = self._detect_hose_hsv(hsv)
         
         should_run_yolo = (self.frame_count % self.yolo_interval == 0)
         
@@ -296,10 +301,13 @@ class RaspberryPiOptimizedDetector:
             cv2.putText(frame_output, 'Bola (Blob)', (bx + radius + 5, by),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
         
-        # Desenha mangueira (HSV) - Contorno azul
+        # Desenha mangueira (HSV) - Bounding box orientada em azul
         if hose_bbox is not None:
             x, y, w_hose, h_hose = hose_bbox
-            cv2.rectangle(frame_output, (x, y), (x + w_hose, y + h_hose), (255, 0, 0), 2)
+            if hose_obb is not None:
+                cv2.polylines(frame_output, [hose_obb], True, (255, 0, 0), 2)
+            else:
+                cv2.rectangle(frame_output, (x, y), (x + w_hose, y + h_hose), (255, 0, 0), 2)
             cv2.circle(frame_output, hose_center, 5, (255, 0, 0), -1)
             cv2.putText(frame_output, 'Mangueira (HSV)', (x, y - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
